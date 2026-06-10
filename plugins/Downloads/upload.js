@@ -4,7 +4,7 @@ import { uploadToUrl } from '../../lib/toUrl.js';
 
 export default {
     name: 'upload',
-    aliases: ['up', 'url', 'tourl', 'fileupload'],
+    aliases: ['upl', 'url', 'tourl', 'fileupload'],
     run: async (context) => {
         const { client, m } = context;
         await client.sendMessage(m.chat, { react: { text: '⌛', key: m.reactKey } });

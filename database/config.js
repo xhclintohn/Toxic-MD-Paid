@@ -203,7 +203,7 @@ async function tryInitPg() {
         setInterval(() => { pool.query('SELECT 1').catch(() => {}); }, 3 * 60 * 1000);
         _pg = pool;
         _backend = 'pg';
-        console.log('✅ [DB] Using Heroku PostgreSQL');
+        console.log('✅ [DB] Using PostgreSQL');
         return true;
     } catch (e) {
         console.log(`⚠️ [DB] PostgreSQL unavailable (${e.message}) — falling back to JSON`);

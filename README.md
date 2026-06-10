@@ -1,3 +1,3 @@
-# Toxic-MD-Paid
+# Toxic-Multidevice-WA-Bot
 
-Toxic WhatsApp Bot
+Toxic-MD WhatsApp Bot - Fixed & Restyled

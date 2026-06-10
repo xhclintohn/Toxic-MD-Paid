@@ -9,64 +9,67 @@ export default async (context) => {
     const { client, m, args, prefix } = context;
         await client.sendMessage(m.chat, { react: { text: '⌛', key: m.reactKey } });
 
-    const fmtMsg = (msg) =>
-      `╭─❏ 「 AUTOLIKE」
-│ ${msg}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`;
+    const fmtMsg = (msg) => `│ ${msg}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`;
 
     try {
       const settings = await getSettings();
-      const value = args[0]?.toLowerCase();
+      const newEmoji = args[0];
+      const currentEmoji = settings.autolikeemoji || 'random';
 
-      if (value === 'on' || value === 'off') {
-        const newValue = value === 'on';
-
-        if (settings.autolike === newValue) {
-          await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
-          await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
-          return await client.sendMessage(m.chat, { text: fmtMsg(`Autolike is already ${value.toUpperCase()}, you brain-dead fool!`) });
+      if (newEmoji) {
+        if (newEmoji === 'random') {
+          if (currentEmoji === 'random') {
+            await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
+            await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
+            return await client.sendMessage(m.chat, { text: fmtMsg('Already using random emojis, you brain-dead fool!') });
+          }
+          await updateSetting('autolikeemoji', 'random');
+          await client.sendMessage(m.chat, { react: { text: '✅', key: m.reactKey } });
+          return await client.sendMessage(m.chat, { text: fmtMsg('Reaction emoji set to random! Happy now?') });
+        } else {
+          if (currentEmoji === newEmoji) {
+            await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
+            return await client.sendMessage(m.chat, { text: fmtMsg(`Already using ${newEmoji} emoji, moron!`) });
+          }
+          await updateSetting('autolikeemoji', newEmoji);
+          await client.sendMessage(m.chat, { react: { text: '✅', key: m.reactKey } });
+          return await client.sendMessage(m.chat, { text: fmtMsg(`Reaction emoji set to ${newEmoji}!`) });
         }
-
-        await updateSetting('autolike', newValue);
-        await client.sendMessage(m.chat, { react: { text: '✅', key: m.reactKey } });
-        return await client.sendMessage(m.chat, {
-          text: fmtMsg(`Autolike ${value.toUpperCase()}! ${value === 'on' ? 'Bot will now like statuses!' : 'Bot will ignore statuses like they ignore you.'}`)
-        });
       }
 
-      const isAutolikeOn = settings.autolike === true;
-      const currentEmoji = settings.autolikeemoji || 'random';
-      const statusText = isAutolikeOn
-        ? `ON (${currentEmoji === 'random' ? 'Random emojis' : currentEmoji + ' emoji'})`
-        : 'OFF';
+      const currentText = currentEmoji === 'random' ? 'Random emojis' : `${currentEmoji} emoji`;
 
             const _devMode = await getDeviceMode();
       if (_devMode === 'ios') {
           await client.sendMessage(m.chat, { react: { text: '📋', key: m.reactKey } });
-          await sendInteractive(client, m, `╭─❏ 「 AUTOLIKE」
-│ Status: ${settings.autolike ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}autolike on\n│ ${prefix}autolike off\n╰───────────────\n> 🌐 hosting.toxicx.tech`);
+          await sendInteractive(client, m, `╭─❏ 「 REACTION」
+│ Status: ${settings.reaction ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}reaction random\n│ ${prefix}reaction ❤️\n│ ${prefix}reaction 🔥\n│ ${prefix}reaction 😂\n╰───────────────\n> 🌐 hosting.toxicx.tech`);
       } else {
     const _msg = generateWAMessageFromContent(
             m.chat,
             {
               interactiveMessage: {
-                body: { text: fmtMsg(`Current: ${statusText}\n│ \n│ Use "${prefix}reaction <emoji>" to change emoji`) },
+                body: { text: fmtMsg(`REACTION SETTINGS\n│ Current: ${currentText}\n│ \n│ Use "${prefix}reaction random" for random\n│ Use "${prefix}reaction <emoji>" for specific`) },
                 footer: { text: '' },
                 nativeFlowMessage: {
                   buttons: [{
                     name: 'single_select',
                     buttonParamsJson: JSON.stringify({
-                      title: 'Choose an option',
+                      title: 'Choose reaction emoji',
                       sections: [{
                         rows: [
-                          { title: 'ON ✅', id: `${prefix}autolike on` },
-                          { title: 'OFF ❌', id: `${prefix}autolike off` }
+                          { title: 'RANDOM 🎲', id: `${prefix}reaction random` },
+                          { title: 'LOVE ❤️', id: `${prefix}reaction ❤️` },
+                          { title: 'FIRE 🔥', id: `${prefix}reaction 🔥` },
+                          { title: 'LAUGH 😂', id: `${prefix}reaction 😂` }
                         ]
                       }]
                     })
                   }]
                 }
               }
-            }
+            },
+            { userJid: client.user?.jid }
           );
           await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
 
@@ -74,10 +77,8 @@ export default async (context) => {
       }
     } catch (error) {
     await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
-      console.error('Autolike command error:', error);
-      await client.sendMessage(m.chat, {
-        text: fmtMsg('Failed to update autolike. Database might be drunk.')
-      });
+      console.error('Reaction command error:', error);
+      await client.sendMessage(m.chat, { text: fmtMsg("Failed to update reaction settings. Something's broken.") });
     }
   });
 };

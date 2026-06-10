@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 const EXTRA_ALIASES = {
   fbdl:       ['fb', 'facebook', 'fbvideo', 'fbdownload', 'facedown'],
   igdl:       ['ig', 'instagram', 'insta', 'igvideo', 'igdownload'],
+  tomp3:       ['vid2audio', 'audio', 'videotoaudio', '2audio', 'toaudio'],
   tikdl:      ['tiktok', 'tik', 'tt', 'ttdl', 'tiktokvid'],
   tikaudio:   ['tikaudio', 'tikmp3', 'tiktokmp3', 'tikmusic'],
   twtdl:      ['twitter', 'tw', 'xdl', 'xvideo', 'tweet', 'twdl', 'x'],

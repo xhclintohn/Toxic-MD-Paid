@@ -548,6 +548,27 @@ async function startToxic() {
     global.currentSock = client;
     currentSock = client;
 
+    client.storez = {};
+    client.ws?.on('CB:message', (n) => {
+      try {
+        const sanitize = (obj) => JSON.parse(JSON.stringify(obj, (k, v) => {
+          if (v?.type === 'Buffer' && Array.isArray(v.data)) return '[bytes]';
+          if (Buffer.isBuffer(v)) return '[bytes]';
+          return v;
+        }));
+        const attrs = n?.attrs || {};
+        if (!attrs.id) return;
+        client.storez[attrs.id] = { attrs, node: sanitize(n?.content) };
+        const ids = Object.keys(client.storez);
+        if (ids.length > 300) delete client.storez[ids[0]];
+      } catch {}
+    });
+
+    client.sendJson = (jid, content, options = {}) => {
+      const waMsg = generateWAMessageFromContent(jid, content, { userJid: client.user?.id, quoted: options.quoted });
+      return client.relayMessage(jid, waMsg.message, { messageId: waMsg.key.id });
+    };
+
     if (client.signalRepository?.lidMapping?.on) {
       client.signalRepository.lidMapping.on('update', (updates) => {
         for (const update of updates) {
@@ -865,6 +886,31 @@ async function startToxic() {
           }
           m.sender = sender;
           m.chat = remoteJid;
+          if (remoteJid && remoteJid.endsWith('@g.us') && !mek.key.fromMe) {
+            const _altJid = mek.key.participantAlt || mek.key.remoteJidAlt || '';
+            const _resolvedSender = (_altJid && !_altJid.endsWith('@lid')) ? _altJid : sender;
+            const _sPhone = _resolvedSender.split('@')[0].split(':')[0].replace(/\D/g, '');
+            if (_sPhone && !_sPhone.includes('@')) {
+              if (!global._toxicMsgCounts) global._toxicMsgCounts = {};
+              if (!global._toxicMsgCountsToday) global._toxicMsgCountsToday = {};
+              if (!global._toxicMsgCountsByGroup) global._toxicMsgCountsByGroup = {};
+              global._toxicMsgCounts[_sPhone] = (global._toxicMsgCounts[_sPhone] || 0) + 1;
+              global._toxicMsgCountsToday[_sPhone] = (global._toxicMsgCountsToday[_sPhone] || 0) + 1;
+              const _gKey = remoteJid + ':' + _sPhone;
+              global._toxicMsgCountsByGroup[_gKey] = (global._toxicMsgCountsByGroup[_gKey] || 0) + 1;
+              const _pn = mek.pushName || '';
+              if (_pn) {
+                if (!globalThis._toxicPushNames) globalThis._toxicPushNames = new Map();
+                globalThis._toxicPushNames.set(_sPhone, _pn);
+                if (globalThis.lidPhoneCache && mek.key.participant && mek.key.participant.endsWith('@lid')) {
+                  const _lidNum = mek.key.participant.split('@')[0].split(':')[0];
+                  if (_lidNum && !globalThis.lidPhoneCache.has(_lidNum)) {
+                    globalThis.lidPhoneCache.set(_lidNum, _sPhone);
+                  }
+                }
+              }
+            }
+          }
           toxic(client, m, { type: "notify" }, store).catch(e => console.log('❌ [TOXIC ASYNC]:', e.message));
           setImmediate(() => {
               if (settings?.autoread === true || settings?.autoread === 'true' || settings?.autoread === 1) { client.readMessages([mek.key]).catch(() => {}); }
@@ -927,7 +973,25 @@ async function startToxic() {
     client.ev.on("presence.update", ({ id, presences }) => {
       if (!global._toxicPresenceMap) global._toxicPresenceMap = new Map();
       for (const [jid, data] of Object.entries(presences || {})) {
-        global._toxicPresenceMap.set(jid, { ...data, timestamp: Date.now() });
+        const _entry = { ...data, timestamp: Date.now() };
+        global._toxicPresenceMap.set(jid, _entry);
+        const _rawNum = jid.split('@')[0].split(':')[0].replace(/\D/g, '');
+        if (_rawNum) {
+          if (jid.endsWith('@lid')) {
+            global._toxicPresenceMap.set(_rawNum + '@lid', _entry);
+            const _phone = globalThis.lidPhoneCache?.get(_rawNum);
+            if (_phone) {
+              const _phoneStr = String(_phone).replace(/\D/g, '');
+              global._toxicPresenceMap.set(_phoneStr + '@s.whatsapp.net', _entry);
+              global._toxicPresenceMap.set(_phoneStr, _entry);
+            }
+          } else {
+            global._toxicPresenceMap.set(_rawNum + '@s.whatsapp.net', _entry);
+            global._toxicPresenceMap.set(_rawNum, _entry);
+            const _lid = globalThis.phoneLidCache?.get(_rawNum);
+            if (_lid) global._toxicPresenceMap.set(_lid + '@lid', _entry);
+          }
+        }
       }
     });
 
@@ -1010,9 +1074,16 @@ async function startToxic() {
         global._toxicCurrentClient = null;
 
         if (reason === DisconnectReason.loggedOut || reason === 401) {
+          global._toxicShuttingDown = true;
+          if (global._toxicReconnectTimer) { clearTimeout(global._toxicReconnectTimer); global._toxicReconnectTimer = null; }
           try { fs.rmSync(sessionName, { recursive: true, force: true }); } catch (e) {}
           invalidateSettingsCache();
-          if (!global._toxicReconnectTimer) global._toxicReconnectTimer = setTimeout(() => { global._toxicReconnectTimer = null; startToxic(); }, 2000);
+          console.log(chalk.red('\n╭─❏ 「 SESSION LOGGED OUT 」'));
+          console.log(chalk.red('│ The WhatsApp session is no longer valid (401 / logged out).'));
+          console.log(chalk.yellow('│ Generate a fresh SESSION, set it, then start the bot again.'));
+          console.log(chalk.red('│ Stopping now to avoid an endless reconnect loop.'));
+          console.log(chalk.red('╰───────────────\n'));
+          setTimeout(() => process.exit(0), 1500);
           return;
         }
 

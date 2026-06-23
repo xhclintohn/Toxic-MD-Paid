@@ -41,40 +41,9 @@ export default async (context) => {
       return await client.sendMessage(m.chat, { text: formatStylishReply("ANTIPROMOTE", `Antipromote ${value.toUpperCase()}!\n│ Promotions are under my control, king!\n│ \n│ 📌 Usage: ${prefix}antipromote on | ${prefix}antipromote off`) });
     }
 
-        const _devMode = await getDeviceMode();
-    if (_devMode === 'ios') {
           await client.sendMessage(m.chat, { react: { text: '📋', key: m.reactKey } });
           await sendInteractive(client, m, `╭─❏ 「 ANTIPROMOTE」
-│ Status: ${settings.antipromote ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}antipromote on\n│ ${prefix}antipromote off\n╰───────────────\n> 🌐 hosting.toxicx.tech`);
-      } else {
-    const _msg = generateWAMessageFromContent(
-            m.chat,
-            {
-                interactiveMessage: {
-                    body: { text: formatStylishReply("ANTIPROMOTE", `Antipromote's ${isEnabled ? 'ON' : 'OFF'} right now. Pick one, fool!\n│ \n│ 📌 Usage: ${prefix}antipromote on | ${prefix}antipromote off`) },
-                    footer: { text: '' },
-                    nativeFlowMessage: {
-                        buttons: [
-                            {
-                                name: 'single_select',
-                                buttonParamsJson: JSON.stringify({
-                                    title: 'Choose an option',
-                                    sections: [{
-                                        rows: [
-                                                                                                    { title: 'ON ✅', id: `${prefix}antipromote on` },
-                                                            { title: 'OFF ❌', id: `${prefix}antipromote off` }
-                                        ]
-                                    }]
-                                })
-                            }
-                        ]
-                    }
-                }
-            }
-          );
-          await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
+│ Status: ${settings.antipromote ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}antipromote on\n│ ${prefix}antipromote off\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`);
 
-          await client.relayMessage(m.chat, _msg.message, { messageId: _msg.key.id });
-    }
   });
 };

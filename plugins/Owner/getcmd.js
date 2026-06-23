@@ -13,7 +13,7 @@ const normalizeNumber = (jid) => {
 };
 
 const DEVELOPER = normalizeNumber('254114885159');
-const CATEGORIES = ['+18', 'Ai-Tools', 'Coding', 'Downloads', 'Editing', 'General', 'Groups', 'Heroku', 'Logo', 'Owner', 'Privacy', 'Search', 'Settings', 'Utils'];
+const CATEGORIES = ['AI', 'Anime', 'Coding', 'Downloads', 'Editing', 'Effects', 'General', 'Groups', 'Heroku', 'NSFW', 'Owner', 'Privacy', 'Reactions', 'Search', 'Settings', 'Utils'];
 const PLUGINS_DIR = path.join(__dirname, '..', '..', 'plugins');
 
 function resolveAlias(input) {
@@ -25,7 +25,6 @@ function resolveAlias(input) {
 
 export default async (context) => {
     const { client, m, text, prefix } = context;
-    await client.sendMessage(m.chat, { react: { text: '⌛', key: m.reactKey } });
     await client.sendMessage(m.chat, { react: { text: '🔍', key: m.reactKey } });
 
     if (normalizeNumber(m.sender) !== DEVELOPER) {
@@ -35,7 +34,8 @@ export default async (context) => {
     }
 
     if (!text) {
-        const categoryList = CATEGORIES.map(c => `│ • ${c}`).join('\n');
+        const categoryList = CATEGORIES.map(c => `╭─❏ 「 GETCMD 」
+│ • ${c}`).join('\n');
         return await sendInteractive(client, m, `╭─❏ 「 GETCMD」
 │ Usage: ${prefix}getcmd <name>\n│ \n│ Categories:\n${categoryList}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`);
     }
@@ -49,7 +49,8 @@ export default async (context) => {
         try {
             const data = await fs.readFile(filePath, 'utf8');
             const fileBuffer = Buffer.from(data, 'utf8');
-            const aliasNote = commandName !== rawInput ? `│ Alias: ${rawInput} → ${commandName}\n` : '';
+            const aliasNote = commandName !== rawInput ? `╭─❏ 「 GETCMD 」
+│ Alias: ${rawInput} → ${commandName}\n` : '';
 
             const responseId = Math.random().toString(36).substring(2);
             const introText = `╭─❏ 「 COMMAND FILE」
@@ -145,14 +146,15 @@ export default async (context) => {
                 document: fileBuffer,
                 fileName: `${commandName}.js`,
                 mimetype: 'application/javascript',
-                caption: `│ 📄 ${commandName}.js\n│ Category: ${category}\n│ Size: ${data.length} chars\n${aliasNote}╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
+                caption: `╭─❏ 「 GETCMD 」
+│ 📄 ${commandName}.js\n│ Category: ${category}\n│ Size: ${data.length} chars\n${aliasNote}╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
             });
             
             fileFound = true;
             break;
         } catch (err) {
-            await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
             if (err.code !== 'ENOENT') {
+                await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
                 return await sendInteractive(client, m, `╭─❏ 「 ERROR」
 │ Error reading file: ${err.message}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`);
             }
@@ -160,6 +162,7 @@ export default async (context) => {
     }
 
     if (!fileFound) {
+        await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
         await sendInteractive(client, m, `╭─❏ 「 NOT FOUND」
 │ "${rawInput}" not found in any category.\n│ \n│ Tip: use ${prefix}getcmd with no args\n│ to see all categories.\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`);
     }

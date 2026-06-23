@@ -11,7 +11,7 @@ export default async (context) => {
     const jid = m.chat;
 
     const formatStylishReply = (message) => {
-      return `│ ${message}\n╰───────────────
+      return `╭─❏ 「 EVENTS 」\n│ ${message}\n╰───────────────
 > ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`;
     };
 
@@ -26,21 +26,16 @@ export default async (context) => {
       }
 
       const settings = await getSettings();
-      if (!settings || Object.keys(settings).length === 0) {
-        return await client.sendMessage(
-          m.chat,
-          { text: formatStylishReply("Database is fucked, no settings found. Fix it, loser. 💀") },
-          { ad: true }
-        );
-      }
 
       const value = args[0]?.toLowerCase();
       let groupSettings = await getGroupSettings(jid);
       console.log('Toxic-MD: Group settings for', jid, ':', groupSettings);
       let isEnabled = groupSettings?.events === true || groupSettings?.events === 1;
 
-      if (value === 'on' || value === 'off') {
-        const action = value === 'on';
+      const _ON  = new Set(['on','enable','enabled','activate','activated','true','1','yes','start']);
+          const _OFF = new Set(['off','disable','disabled','deactivate','deactivated','false','0','no','stop']);
+        if (_ON.has(value) || _OFF.has(value)) {
+        const action = _ON.has(value);
         if (isEnabled === action) {
           await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
 
@@ -66,43 +61,10 @@ export default async (context) => {
         );
       }
 
-            const _devMode = await getDeviceMode();
-      if (_devMode === 'ios') {
           await client.sendMessage(m.chat, { react: { text: '📋', key: m.reactKey } });
           await sendInteractive(client, m, `╭─❏ 「 EVENTS」
-│ Status: ${settings.events ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}events on\n│ ${prefix}events off\n╰───────────────\n> 🌐 hosting.toxicx.tech`);
-      } else {
-    const _msg = generateWAMessageFromContent(
-            m.chat,
-            {
-                interactiveMessage: {
-                    body: { text: formatStylishReply(
-                `Events Status: ${isEnabled ? 'ON 🥶' : 'OFF 😴'}. Pick a vibe, noob! 😈`
-              ) },
-                    footer: { text: '' },
-                    nativeFlowMessage: {
-                        buttons: [
-                            {
-                                name: 'single_select',
-                                buttonParamsJson: JSON.stringify({
-                                    title: 'Choose an option',
-                                    sections: [{
-                                        rows: [
-                                                                                                    { title: 'ON ✅', id: `${prefix}events on` },
-                                                            { title: 'OFF ❌', id: `${prefix}events off` }
-                                        ]
-                                    }]
-                                })
-                            }
-                        ]
-                    }
-                }
-            }
-          );
-          await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
+│ Status: ${settings.events ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}events on\n│ ${prefix}events off\n╰───────────────`);
 
-          await client.relayMessage(m.chat, _msg.message, { messageId: _msg.key.id });
-      }
     } catch (error) {
     await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
       console.error('Toxic-MD: Error in events.js:', error.stack);

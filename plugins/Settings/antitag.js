@@ -35,8 +35,10 @@ export default async (context) => {
             return await client.sendMessage(m.chat, { text: formatStylishReply("ANTITAG", "I need admin privileges to enable Antitag, you clown!") });
         }
 
-        if (value === 'on' || value === 'off') {
-            const action = value === 'on';
+        const _ON  = new Set(['on','enable','enabled','activate','activated','true','1','yes','start']);
+          const _OFF = new Set(['off','disable','disabled','deactivate','deactivated','false','0','no','stop']);
+        if (_ON.has(value) || _OFF.has(value)) {
+            const action = _ON.has(value);
 
             if (isEnabled === action) {
                 await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
@@ -48,40 +50,9 @@ export default async (context) => {
             return await client.sendMessage(m.chat, { text: formatStylishReply("ANTITAG", `Antitag has been turned ${value.toUpperCase()} for this group.\n│ \n│ 📌 Usage: ${prefix}antitag on | ${prefix}antitag off`) });
         }
 
-                const _devMode = await getDeviceMode();
-        if (_devMode === 'ios') {
           await client.sendMessage(m.chat, { react: { text: '📋', key: m.reactKey } });
           await sendInteractive(client, m, `╭─❏ 「 ANTITAG」
-│ Status: ${settings.antitag ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}antitag on\n│ ${prefix}antitag off\n╰───────────────\n> 🌐 hosting.toxicx.tech`);
-      } else {
-    const _msg = generateWAMessageFromContent(
-            m.chat,
-            {
-                interactiveMessage: {
-                    body: { text: formatStylishReply("ANTITAG", `Antitag's ${isEnabled ? 'ON' : 'OFF'} right now. Pick one, peasant!\n│ \n│ 📌 Usage: ${prefix}antitag on | ${prefix}antitag off`) },
-                    footer: { text: '' },
-                    nativeFlowMessage: {
-                        buttons: [
-                            {
-                                name: 'single_select',
-                                buttonParamsJson: JSON.stringify({
-                                    title: 'Choose an option',
-                                    sections: [{
-                                        rows: [
-                                                                                                    { title: 'ON ✅', id: `${prefix}antitag on` },
-                                                            { title: 'OFF ❌', id: `${prefix}antitag off` }
-                                        ]
-                                    }]
-                                })
-                            }
-                        ]
-                    }
-                }
-            }
-          );
-          await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
+│ Status: ${settings.antitag ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}antitag on\n│ ${prefix}antitag off\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`);
 
-          await client.relayMessage(m.chat, _msg.message, { messageId: _msg.key.id });
-        }
     });
 };

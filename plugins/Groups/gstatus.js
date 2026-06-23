@@ -7,12 +7,12 @@ export default {
   run: async (context) => {
     const { client, m, prefix, IsGroup, botname } = context;
 
-    const fmt = (text) => `│ \n│ ${text}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨ｎ`;
-
     try {
       if (!botname) {
         await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
-        return client.sendMessage(m.chat, { text: fmt(`Bot name is not set.`) });
+        return client.sendMessage(m.chat, { 
+          text: `╭─❏ 「 GROUP STATUS 」\n│ Bot name is not set.\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
+        });
       }
 
       const bodyStr = (m.body || '').trim();
@@ -29,7 +29,7 @@ export default {
         if (!afterCmd) {
           await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
           return client.sendMessage(m.chat, {
-            text: fmt(`Reply to media and provide a group link or JID.\nExample:\n${prefix}gstatus https://chat.whatsapp.com/xxxxx\n${prefix}gstatus 120363@g.us`)
+            text: `╭─❏ 「 GROUP STATUS 」\n│ Reply to media and provide a group link or JID.\n│ Example:\n│ ${prefix}gstatus https://chat.whatsapp.com/xxxxx\n│ ${prefix}gstatus 120363@g.us\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
           });
         }
         const parts = afterCmd.split(/\s+/);
@@ -50,13 +50,17 @@ export default {
             if (!targetGroupJid) throw new Error('no id');
           } catch {
             await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
-            return client.sendMessage(m.chat, { text: fmt(`Invalid or expired group link.`) });
+            return client.sendMessage(m.chat, { 
+              text: `╭─❏ 「 GROUP STATUS 」\n│ Invalid or expired group link.\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
+            });
           }
         } else if (input.includes('@g.us')) {
           targetGroupJid = input.trim();
         } else {
           await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
-          return client.sendMessage(m.chat, { text: fmt(`Invalid group link or JID.`) });
+          return client.sendMessage(m.chat, { 
+            text: `╭─❏ 「 GROUP STATUS 」\n│ Invalid group link or JID.\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
+          });
         }
 
         inlineText = rest || null;
@@ -73,11 +77,11 @@ export default {
       if (m.message?.imageMessage) {
         sourceMsg = m.message.imageMessage;
         mediaType = 'image';
-        caption = inlineText || m.message.imageMessage?.caption || null;
+        caption = m.message.imageMessage?.caption || inlineText || null;
       } else if (m.message?.videoMessage) {
         sourceMsg = m.message.videoMessage;
         mediaType = 'video';
-        caption = inlineText || m.message.videoMessage?.caption || null;
+        caption = m.message.videoMessage?.caption || inlineText || null;
       } else if (m.message?.audioMessage) {
         sourceMsg = m.message.audioMessage;
         mediaType = 'audio';
@@ -85,27 +89,27 @@ export default {
         if (quoted.imageMessage) {
           sourceMsg = quoted.imageMessage;
           mediaType = 'image';
-          caption = inlineText || quoted.imageMessage?.caption || null;
+          caption = quoted.imageMessage?.caption || inlineText || null;
         } else if (quoted.videoMessage) {
           sourceMsg = quoted.videoMessage;
           mediaType = 'video';
-          caption = inlineText || quoted.videoMessage?.caption || null;
+          caption = quoted.videoMessage?.caption || inlineText || null;
         } else if (quoted.audioMessage) {
           sourceMsg = quoted.audioMessage;
           mediaType = 'audio';
         } else if (quoted.conversation) {
-          caption = inlineText || quoted.conversation;
+          caption = quoted.conversation || inlineText || null;
         } else if (quoted.extendedTextMessage?.text) {
-          caption = inlineText || quoted.extendedTextMessage.text;
+          caption = quoted.extendedTextMessage.text || inlineText || null;
         }
       } else {
-        caption = inlineText;
+        caption = inlineText || null;
       }
 
       if (!mediaType && !caption) {
         await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
         return client.sendMessage(m.chat, {
-          text: fmt(`Reply to an image, video, audio, or include text.\nExample: ${prefix}gstatus Check out this update!`)
+          text: `╭─❏ 「 GROUP STATUS 」\n│ Reply to an image, video, audio, or include text.\n│ Example: ${prefix}gstatus Check out this update!\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
         });
       }
 
@@ -118,37 +122,91 @@ export default {
 
       if (mediaType === 'image') {
         const buffer = await getBuffer(sourceMsg, 'image');
-        await client.sendStatusMention(
-          { image: buffer, ...(caption ? { caption } : {}) },
-          [targetGroupJid]
-        );
+        const messageObj = {
+          image: buffer,
+          contextInfo: {
+            isGroupStatus: true,
+            statusSourceType: "IMAGE",
+            statusAttributions: [
+              {
+                type: 10
+              }
+            ],
+            statusAudienceMetadata: {
+              audienceType: "CLOSE_FRIENDS"
+            }
+          }
+        };
+        if (caption) messageObj.caption = caption;
+        await client.sendMessage(targetGroupJid, messageObj);
       } else if (mediaType === 'video') {
         const buffer = await getBuffer(sourceMsg, 'video');
-        await client.sendStatusMention(
-          { video: buffer, ...(caption ? { caption } : {}) },
-          [targetGroupJid]
-        );
+        const messageObj = {
+          video: buffer,
+          contextInfo: {
+            isGroupStatus: true,
+            statusSourceType: "VIDEO",
+            statusAttributions: [
+              {
+                type: 10
+              }
+            ],
+            statusAudienceMetadata: {
+              audienceType: "CLOSE_FRIENDS"
+            }
+          }
+        };
+        if (caption) messageObj.caption = caption;
+        await client.sendMessage(targetGroupJid, messageObj);
       } else if (mediaType === 'audio') {
         const buffer = await getBuffer(sourceMsg, 'audio');
-        await client.sendStatusMention(
-          { audio: buffer, mimetype: 'audio/mp4', ptt: false },
-          [targetGroupJid]
-        );
+        await client.sendMessage(targetGroupJid, {
+          audio: buffer,
+          mimetype: 'audio/mp4',
+          contextInfo: {
+            isGroupStatus: true,
+            statusSourceType: "AUDIO",
+            statusAttributions: [
+              {
+                type: 10
+              }
+            ],
+            statusAudienceMetadata: {
+              audienceType: "CLOSE_FRIENDS"
+            }
+          }
+        });
       } else {
-        await client.sendStatusMention(
-          { text: caption },
-          [targetGroupJid]
-        );
+        await client.sendMessage(targetGroupJid, {
+          text: caption,
+          contextInfo: {
+            isGroupStatus: true,
+            statusSourceType: "TEXT",
+            statusAttributions: [
+              {
+                type: 10
+              }
+            ],
+            statusAudienceMetadata: {
+              audienceType: "CLOSE_FRIENDS"
+            }
+          }
+        });
       }
 
       await client.sendMessage(m.chat, { react: { text: '✅', key: m.reactKey } });
       if (!IsGroup) {
-        await client.sendMessage(m.chat, { text: fmt(`✅ Status posted to group!`) });
+        await client.sendMessage(m.chat, { 
+          text: `╭─❏ 「 GROUP STATUS 」\n│ ✅ Status posted to group!\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
+        });
       }
 
     } catch (error) {
+      console.error('GStatus Error:', error);
       await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
-      await client.sendMessage(m.chat, { text: fmt(`Error: ${error.message}`) });
+      await client.sendMessage(m.chat, { 
+        text: `╭─❏ 「 GROUP STATUS 」\n│ Error: ${error.message}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
+      });
     }
   }
 };

@@ -10,6 +10,8 @@
     "baileys",
     "nodejs",
     "heroku",
+    "whatsapp bot",
+    "wa bot",
     "toxic-md"
   ],
   "scripts": {
@@ -27,7 +29,7 @@
     },
     "DEVICE": {
       "description": "Device mode: android (default) or ios. Android uses interactive select buttons; iOS uses text-only responses. Accepted values: android, ios, default.",
-      "required": false,
+      "required": true,
       "value": "default"
     },
     "HEROKU_APP_NAME": {

@@ -42,13 +42,15 @@ export default async (context) => {
       const userAdmins = groupMetadata.participants.filter(p => p.admin !== null).map(p => p.id);
       const isBotAdmin = userAdmins.includes(Myself);
 
-      if (value === 'on' || value === 'off') {
+      const _ON  = new Set(['on','enable','enabled','activate','activated','true','1','yes','start']);
+          const _OFF = new Set(['off','disable','disabled','deactivate','deactivated','false','0','no','stop']);
+        if (_ON.has(value) || _OFF.has(value)) {
         if (!isBotAdmin) {
           await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
           return await client.sendMessage(m.chat, { text: formatStylishReply("ANTIFOREIGN", "Make me an admin first, you clown. Can't touch antiforeign without juice.") });
         }
 
-        const action = value === 'on';
+        const action = _ON.has(value);
 
         if (isEnabled === action) {
           await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
@@ -60,41 +62,10 @@ export default async (context) => {
         return await client.sendMessage(m.chat, { text: formatStylishReply("ANTIFOREIGN", `Antiforeign's now ${value.toUpperCase()}. Foreigners better watch out or get yeeted!\n│ \n│ 📌 Usage: ${prefix}antiforeign on | ${prefix}antiforeign off`) });
       }
 
-            const _devMode = await getDeviceMode();
-      if (_devMode === 'ios') {
           await client.sendMessage(m.chat, { react: { text: '📋', key: m.reactKey } });
           await sendInteractive(client, m, `╭─❏ 「 ANTIFOREIGN」
-│ Status: ${settings.antiforeign ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}antiforeign on\n│ ${prefix}antiforeign off\n╰───────────────\n> 🌐 hosting.toxicx.tech`);
-      } else {
-    const _msg = generateWAMessageFromContent(
-            m.chat,
-            {
-                interactiveMessage: {
-                    body: { text: formatStylishReply("ANTIFOREIGN", `Antiforeign's ${isEnabled ? 'ON' : 'OFF'} in this group, dipshit. Pick a vibe!\n│ \n│ 📌 Usage: ${prefix}antiforeign on | ${prefix}antiforeign off`) },
-                    footer: { text: '' },
-                    nativeFlowMessage: {
-                        buttons: [
-                            {
-                                name: 'single_select',
-                                buttonParamsJson: JSON.stringify({
-                                    title: 'Choose an option',
-                                    sections: [{
-                                        rows: [
-                                                                                                    { title: 'ON ✅', id: `${prefix}antiforeign on` },
-                                                            { title: 'OFF ❌', id: `${prefix}antiforeign off` }
-                                        ]
-                                    }]
-                                })
-                            }
-                        ]
-                    }
-                }
-            }
-          );
-          await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
+│ Status: ${settings.antiforeign ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}antiforeign on\n│ ${prefix}antiforeign off\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`);
 
-          await client.relayMessage(m.chat, _msg.message, { messageId: _msg.key.id });
-      }
     } catch (error) {
     await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
       console.error('[Antiforeign] Error in command:', error);

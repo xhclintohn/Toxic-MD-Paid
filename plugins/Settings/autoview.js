@@ -16,20 +16,13 @@ export default async (context) => {
 
     try {
       const settings = await getSettings();
-      if (!settings || Object.keys(settings).length === 0) {
-        await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
-        return await client.sendMessage(
-          m.chat,
-          { text: formatStylishReply('AUTOVIEW', 'Database is down, no settings found. Fix it, loser.') },
-          { ad: true }
-        );
-      }
 
       const value = args[0]?.toLowerCase();
-      const validOptions = ['on', 'off'];
+      const _ON = new Set(['on','enable','enabled','activate','activated','true','1','yes','start']);
+          const _OFF = new Set(['off','disable','disabled','deactivate','deactivated','false','0','no','stop']);
 
-      if (validOptions.includes(value)) {
-        const newState = value === 'on';
+        if (_ON.has(value) || _OFF.has(value)) {
+        const newState = _ON.has(value);
         if (settings.autoview === newState) {
           return await client.sendMessage(
             m.chat,
@@ -47,41 +40,10 @@ export default async (context) => {
         );
       }
 
-            const _devMode = await getDeviceMode();
-      if (_devMode === 'ios') {
           await client.sendMessage(m.chat, { react: { text: '📋', key: m.reactKey } });
           await sendInteractive(client, m, `╭─❏ 「 AUTOVIEW」
-│ Status: ${settings.autoview ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}autoview on\n│ ${prefix}autoview off\n╰───────────────\n> 🌐 hosting.toxicx.tech`);
-      } else {
-    const _msg = generateWAMessageFromContent(
-            m.chat,
-            {
-                interactiveMessage: {
-                    body: { text: formatStylishReply('AUTOVIEW', `Autoview Status: ${settings.autoview ? 'ON ✅' : 'OFF ❌'}. Pick a vibe, noob!\n│ \n│ 📌 Usage: ${prefix}autoview on | ${prefix}autoview off`) },
-                    footer: { text: '' },
-                    nativeFlowMessage: {
-                        buttons: [
-                            {
-                                name: 'single_select',
-                                buttonParamsJson: JSON.stringify({
-                                    title: 'Choose an option',
-                                    sections: [{
-                                        rows: [
-                                                                                                    { title: 'ON ✅', id: `${prefix}autoview on` },
-                                                            { title: 'OFF ❌', id: `${prefix}autoview off` }
-                                        ]
-                                    }]
-                                })
-                            }
-                        ]
-                    }
-                }
-            }
-          );
-          await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } });
+│ Status: ${settings.autoview ? 'ON ✅' : 'OFF ❌'}\n│ \n│ Options:\n│ ${prefix}autoview on\n│ ${prefix}autoview off\n╰───────────────`);
 
-          await client.relayMessage(m.chat, _msg.message, { messageId: _msg.key.id });
-      }
     } catch (error) {
     await client.sendMessage(m.chat, { react: { text: '❌', key: m.reactKey } }).catch(() => {});
       await client.sendMessage(

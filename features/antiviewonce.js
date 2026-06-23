@@ -1,122 +1,151 @@
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { getCachedSettings } from '../lib/settingsCache.js';
+  import { getCachedSettings } from '../lib/settingsCache.js';
 
-const VIEW_ONCE_TYPES = new Set([
-    'viewOnceMessage',
-    'viewOnceMessageV2',
-    'viewOnceMessageV2Extension'
-]);
+  // All wrapper types smsg.js recognises for view-once
+  const VO_TYPES   = new Set(['viewOnceMessage', 'viewOnceMessageV2', 'viewOnceMessageV2Extension']);
+  const VO_WRAPPERS = ['viewOnceMessageV2Extension', 'viewOnceMessageV2', 'viewOnceMessage'];
+  const TRANSPORT   = ['ephemeralMessage', 'documentWithCaptionMessage', 'deviceSentMessage',
+                       'editedMessage', 'futureProofMessage'];
 
-const AUDIO_TYPES = new Set([
-    'audioMessage',
-    'pttMessage'
-]);
+  function isEnabled(val) {
+      if (val === true || val === 1) return true;
+      if (typeof val === 'string') { const v = val.toLowerCase(); return v === 'true' || v === '1' || v === 'on'; }
+      return false;
+  }
 
-function isViewOnce(m) {
-    if (!m?.message) return false;
-    if (VIEW_ONCE_TYPES.has(m.mtype)) return true;
-    const keys = Object.keys(m.message);
-    if (keys.some(k => VIEW_ONCE_TYPES.has(k))) return true;
-    if (m.msg?.viewOnce === true) return true;
-    if (m.msg?.imageMessage?.viewOnce === true) return true;
-    if (m.msg?.videoMessage?.viewOnce === true) return true;
-    return false;
-}
+  // Unwrap transport + view-once wrappers to reach the inner media message object
+  function deepUnwrap(msg) {
+      if (!msg) return null;
+      const ALL = [...VO_WRAPPERS, ...TRANSPORT];
+      let cur = msg;
+      for (let i = 0; i < 15; i++) {
+          const k = ALL.find(w => cur[w]?.message);
+          if (!k) break;
+          cur = cur[k].message;
+      }
+      return cur;
+  }
 
-function extractMedia(m) {
-    if (m.mtype === 'viewOnceMessage') {
-        const inner = m.message?.viewOnceMessage?.message || {};
-        const t = Object.keys(inner).find(k => k !== 'messageContextInfo') || '';
-        if (t === 'imageMessage') return { image: m.msg || inner.imageMessage, video: null, audio: null };
-        if (t === 'videoMessage') return { image: null, video: m.msg || inner.videoMessage, audio: null };
-        if (AUDIO_TYPES.has(t)) return { image: null, video: null, audio: m.msg || inner[t] };
-    }
-    if (m.mtype === 'viewOnceMessageV2' || m.mtype === 'viewOnceMessageV2Extension') {
-        const inner = m.msg?.message || {};
-        return {
-            image: inner.imageMessage || null,
-            video: inner.videoMessage || null,
-            audio: inner.audioMessage || inner.pttMessage || null
-        };
-    }
-    for (const k of Object.keys(m.message || {})) {
-        if (!VIEW_ONCE_TYPES.has(k)) continue;
-        const wrapper = m.message[k];
-        const inner = wrapper?.message || wrapper || {};
-        if (inner.imageMessage) return { image: inner.imageMessage, video: null, audio: null };
-        if (inner.videoMessage) return { image: null, video: inner.videoMessage, audio: null };
-        if (inner.audioMessage) return { image: null, video: null, audio: inner.audioMessage };
-    }
-    if (m.msg?.viewOnce === true) {
-        const mime = m.msg?.mimetype || '';
-        if (mime.startsWith('video')) return { image: null, video: m.msg, audio: null };
-        if (mime.startsWith('audio')) return { image: null, video: null, audio: m.msg };
-        return { image: m.msg, video: null, audio: null };
-    }
-    return { image: null, video: null, audio: null };
-}
+  function pickMedia(inner) {
+      if (!inner) return null;
+      if (inner.imageMessage) return { type: 'image', msg: inner.imageMessage };
+      if (inner.videoMessage) return { type: 'video', msg: inner.videoMessage };
+      if (inner.audioMessage || inner.pttMessage) return { type: 'audio', msg: inner.audioMessage || inner.pttMessage };
+      return null;
+  }
 
-async function tryDownload(client, mediaMsg, type) {
-    try {
-        const stream = await downloadContentFromMessage(mediaMsg, type);
-        const chunks = [];
-        for await (const chunk of stream) chunks.push(chunk);
-        const buf = Buffer.concat(chunks);
-        if (buf.length > 0) return buf;
-    } catch {}
-    try {
-        const buf = await client.downloadMediaMessage(mediaMsg);
-        if (buf?.length > 0) return buf;
-    } catch {}
-    return null;
-}
+  // Download with multiple fallback strategies, ordered by reliability
+  async function grab(client, m, mediaMsg, type) {
+      if (typeof m.msg?.download === 'function') {
+          try { const b = await m.msg.download(); if (b?.length) return b; } catch {}
+      }
+      if (typeof m.download === 'function') {
+          try { const b = await m.download(); if (b?.length) return b; } catch {}
+      }
 
-export default async (client, m) => {
-    try {
-        if (!m?.message || m.key?.fromMe) return;
-        if (!isViewOnce(m)) return;
+      // Strategy 2 — for viewOnceMessageV2/Extension: smsg sets m.msg = { message: { imageMessage } }
+      // Access inner via m.msg.message and call downloadMediaMessage directly (same as retrieve.js)
+      const innerViaSmsg = m.msg?.message;
+      if (innerViaSmsg) {
+          const im = innerViaSmsg.imageMessage || innerViaSmsg.videoMessage ||
+                     innerViaSmsg.audioMessage || innerViaSmsg.pttMessage;
+          if (im) {
+              try { const b = await client.downloadMediaMessage(im); if (b?.length) return b; } catch {}
+              const t2 = innerViaSmsg.videoMessage ? 'video'
+                        : (innerViaSmsg.audioMessage || innerViaSmsg.pttMessage) ? 'audio' : 'image';
+              try {
+                  const s = await downloadContentFromMessage(im, t2);
+                  const chunks = []; for await (const c of s) chunks.push(c);
+                  const buf = Buffer.concat(chunks);
+                  if (buf?.length) return buf;
+              } catch {}
+          }
+      }
 
-        const settings = await getCachedSettings();
-        if (!settings?.antiviewonce) return;
+      // Strategy 3 — downloadContentFromMessage on the deepUnwrapped media object
+      try {
+          const dlType = type === 'audio' ? 'audio' : type === 'video' ? 'video' : 'image';
+          const stream = await downloadContentFromMessage(mediaMsg, dlType);
+          const chunks = []; for await (const c of stream) chunks.push(c);
+          const buf = Buffer.concat(chunks);
+          if (buf?.length) return buf;
+      } catch {}
 
-        let dest = client.user?.id || '';
-        if (dest.includes(':')) dest = dest.split(':')[0] + '@s.whatsapp.net';
-        if (!dest) return;
+      // Strategy 4 — downloadMediaMessage with the media message directly (retrieve.js approach)
+      try { const b = await client.downloadMediaMessage(mediaMsg); if (b?.length) return b; } catch {}
 
-        const { image: imageMsg, video: videoMsg, audio: audioMsg } = extractMedia(m);
-        if (!imageMsg && !videoMsg && !audioMsg) return;
+      // Strategy 5 — wrap media in synthetic message
+      try {
+          const b = await client.downloadMediaMessage({ message: { [`${type}Message`]: mediaMsg } });
+          if (b?.length) return b;
+      } catch (e) {
+          console.log('[ANTIVIEWONCE] all download strategies failed:', e?.message || e);
+      }
 
-        const senderNum = (m.sender || m.key?.participant || m.key?.remoteJid || '').split('@')[0].split(':')[0] || 'Unknown';
-        const chatType = (m.chat || m.key?.remoteJid || '').endsWith('@g.us') ? 'Group 👥' : 'DM 💬';
-        const chatId = m.chat || m.key?.remoteJid || '';
-        const ts = new Date().toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' });
-        const mentions = m.sender ? [m.sender] : [];
+      return null;
+  }
 
-        const caption = `╭─❏ 「 VIEW ONCE RETRIEVED 👁」\n│ Sender: @${senderNum}\n│ Chat: ${chatType}\n│ Time: ${ts}\n│ \n│ Nothing slips past me. 😈\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`;
+  export default async (client, m) => {
+      try {
+          if (!m?.message) return;
+          if (m.key?.fromMe) return;
 
-        if (imageMsg) {
-            const buf = await tryDownload(client, imageMsg, 'image');
-            if (buf?.length > 0) {
-                await client.sendMessage(dest, { image: buf, caption, mentions });
-                if (chatId !== dest) {
-                    await client.sendMessage(chatId, { image: buf, caption: `╭─❏ 「 ANTIVIEWONCE」\n│ View-once saved and forwarded. 😈\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`, mentions }).catch(() => {});
-                }
-            }
-        } else if (videoMsg) {
-            const buf = await tryDownload(client, videoMsg, 'video');
-            if (buf?.length > 0) {
-                await client.sendMessage(dest, { video: buf, caption, mentions });
-                if (chatId !== dest) {
-                    await client.sendMessage(chatId, { text: `╭─❏ 「 ANTIVIEWONCE」\n│ View-once video saved and forwarded. 😈\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`, mentions }).catch(() => {});
-                }
-            }
-        } else if (audioMsg) {
-            const buf = await tryDownload(client, audioMsg, 'audio');
-            if (buf?.length > 0) {
-                const mime = audioMsg.mimetype || 'audio/ogg; codecs=opus';
-                const isPtt = mime.includes('ogg') || mime.includes('opus');
-                await client.sendMessage(dest, { audio: buf, mimetype: mime, ptt: isPtt, caption, mentions });
-            }
-        }
-    } catch {}
-};
+          const settings = await getCachedSettings();
+          if (!isEnabled(settings?.antiviewonce)) return;
+
+          // Detect view-once by smsg-set mtype OR raw message wrapper key
+          const mtype = m.mtype || '';
+          const isVO  = VO_TYPES.has(mtype)
+              || VO_WRAPPERS.some(k => m.message[k])
+              || TRANSPORT.some(k => m.message[k]?.message && VO_WRAPPERS.some(v => m.message[k].message[v]));
+          if (!isVO) return;
+
+          const inner = deepUnwrap(m.message);
+          const media = pickMedia(inner);
+          if (!media) return;
+
+          // Send to bot's own saved-messages JID
+          const rawBot = client.user?.id || '';
+          const botJid = rawBot.includes(':')
+              ? rawBot.split(':')[0] + '@s.whatsapp.net'
+              : rawBot;
+          if (!botJid) return;
+
+          const buf = await grab(client, m, media.msg, media.type);
+          if (!buf?.length) {
+              console.log('[ANTIVIEWONCE] download failed — all strategies exhausted');
+              return;
+          }
+
+          const _rawSender = m.sender || m.key?.participant || m.key?.remoteJid || '';
+          const _senderRaw = _rawSender.split('@')[0].split(':')[0];
+          const senderNum = (_rawSender.endsWith('@lid') && globalThis.lidPhoneCache?.get(_senderRaw))
+              ? String(globalThis.lidPhoneCache.get(_senderRaw)).replace(/\D/g, '')
+              : _senderRaw || 'Unknown';
+          const chatType = (m.chat || '').endsWith('@g.us') ? 'Group 👥' : 'DM 💬';
+          const ts    = new Date().toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' });
+          const extra = (media.msg.caption || '').trim();
+          const mentions = m.sender ? [m.sender] : [];
+          const caption  = `╭─❏ 「 VIEW ONCE RETRIEVED 👁」\n│ Sender: @${senderNum}\n│ Chat: ${chatType}\n│ Time: ${ts}\n${extra ? '│ Caption: ' + extra + '\n' : ''}│ \n│ Nothing slips past me. 😈\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`;
+
+          if (media.type === 'image') {
+              await client.sendMessage(botJid, { image: buf, caption, mentions });
+          } else if (media.type === 'video') {
+              await client.sendMessage(botJid, { video: buf, caption, mentions });
+          } else if (media.type === 'document') {
+              await client.sendMessage(botJid, {
+                  document: buf,
+                  mimetype: media.msg.mimetype || 'application/octet-stream',
+                  fileName: media.msg.fileName || 'viewonce',
+                  caption, mentions
+              });
+          } else {
+              const mime = media.msg.mimetype || 'audio/ogg; codecs=opus';
+              await client.sendMessage(botJid, { audio: buf, mimetype: mime, ptt: media.msg.ptt !== false });
+              await client.sendMessage(botJid, { text: caption, mentions });
+          }
+      } catch (e) {
+          console.log('[ANTIVIEWONCE] error:', e.message);
+      }
+  };
+  

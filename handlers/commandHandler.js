@@ -54,7 +54,7 @@ const EXTRA_ALIASES = {
   help:       ['h', 'info', 'usage'],
   eval:       ['ev', 'evl'],
   shell:      ['sh', 'bash', 'terminal', 'exec'],
-  restart:    ['reboot', 'rs', 'redeploy', 'update'],
+  restart:    ['reboot', 'rs', 'redeploy'],
   stickerwm:  ['wm', 'watermark', 'stickermark'],
   tr:         ['translate', 'tl', 'trans', 'trt'],
   togif:      ['tomp4', 'giftomp4'],
@@ -133,7 +133,26 @@ const EXTRA_ALIASES = {
   ngc:          ['newgc', 'groupcreate', 'creategc', 'newgroup', 'creategroup'],
   ginfo:        ['groupinfo', 'gcinfo', 'groupmeta', 'gmetadata', 'gcmeta'],
   wabot:        ['addaibot', 'addwabot', 'gcaibot', 'addwhatsappbot'],
-  disappearing: ['disappear', 'disap', 'dsp', 'gvanish', 'timer', 'ephemeral', 'vanish', 'gcvanish'] };
+  disappearing: ['disappear', 'disap', 'dsp', 'gvanish', 'timer', 'ephemeral', 'vanish', 'gcvanish'],
+  setwelcome:   ['welcomemsg', 'customwelcome', 'setwelcomemsg'],
+  setgoodbye:   ['goodbyemsg', 'customgoodbye', 'setgoodbyemsg'],
+  blockgc:      ['bangc', 'silencegc', 'mutegc'],
+  unblockgc:    ['ungc', 'unbangc', 'unsilencegc'],
+  blockedgcs:   ['listblockedgc', 'bannedgcs', 'blockedgroups'],
+  trustlink:    ['addtrustedlink', 'allowlink', 'whitelistlink'],
+  untrustlink:  ['removetrustedlink', 'disallowlink', 'unwhitelistlink'],
+  trustlist:    ['listtrusted', 'trustedlinks', 'allowedlinks'],
+  crm:          ['compile', 'tojs', 'getjson'],
+  run:          ['resend', 'rerun', 'insp', 'inspect'],
+  vupdate:      ['vup', 'selfupdate', 'gitupdate'],
+  cloneweb:     ['clone', 'webclone', 'getsource'],
+  'crm-snip':   ['crmsnip', 'snip', 'csnip'],
+  'crm-cmd':    ['crmcmd', 'tocmd', 'ccmd'],
+  addcmd:       ['newcmd', 'savecmd', 'createcmd'],
+  delcmd:       ['delcommand', 'rmcmd', 'removecmd'],
+  setmention:   ['sm', 'setm'],
+  gpp:          ['setgpp','setgrouppp','setgcprofile','gcprofile','changegpp','grouppp','gcpp','groupphoto','setgroupphoto','gcpic','setgcpic','grouppic','setgrouppic'],
+  gcname:       ['changename','changegcname','groupname','editgcname','renamegc','setgcname','gcnm','renamegroup','setgroupname','gname'] };
 
 function fixPluginFiles(dir) {
   try {

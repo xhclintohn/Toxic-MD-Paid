@@ -1,6 +1,6 @@
 {
   "name": "toxic-md",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A lightning-fast WhatsApp bot with multi-device support, built on Node.js & Baileys.",
   "main": "index.js",
   "type": "module",
@@ -30,7 +30,7 @@
     "luxon": "^3.5.0",
     "javascript-obfuscator": "latest",
     "moment-timezone": "^0.5.46",
-    "node-fetch": "^2.7.0",
+    "node-fetch": "latest",
     "node-webpmux": "^3.1.7",
     "performance-now": "^2.1.0",
     "pino": "^8.19.0",

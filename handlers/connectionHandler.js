@@ -1,10 +1,11 @@
 import { Boom } from '@hapi/boom';
 import { DateTime } from 'luxon';
-import { DisconnectReason, generateWAMessageFromContent } from '@whiskeysockets/baileys';
+import { DisconnectReason } from '@whiskeysockets/baileys';
 import { addSudoUser, getSudoUsers } from '../database/config.js';
 import { getCachedSettings } from '../lib/settingsCache.js';
 import { commands, totalCommands } from '../handlers/commandHandler.js';
 import { getDeviceMode } from '../lib/deviceMode.js';
+import { ButtonV2 } from '../lib/WABuilder.js';
 
 const botName = process.env.BOTNAME || "Toxic-MD";
 let hasSentStartMessage = false;
@@ -35,6 +36,14 @@ async function connectionHandler(socket, connectionUpdate, reconnect) {
   }
 
   if (connection === "open") {
+      globalThis.conn = socket;
+      globalThis.sock = socket;
+      globalThis.tox = socket;
+      globalThis.toxic = socket;
+      globalThis.clint = socket;
+      globalThis.bot = socket;
+      globalThis.wx = socket;
+      globalThis.client = socket;
     const userId = socket.user.id.split(":")[0].split("@")[0];
     const settings = await getCachedSettings();
     const sudoUsers = await getSudoUsers();
@@ -43,24 +52,6 @@ async function connectionHandler(socket, connectionUpdate, reconnect) {
     if (botJid.includes(':')) {
       botJid = botJid.split(':')[0] + '@s.whatsapp.net';
     }
-
-    if (process.env.EXPIRY_NOTICE === '1') {
-        try {
-          await socket.sendMessage(botJid, {
-            text: [
-              '*Bot Subscription Expired*',
-              '',
-              'Your Toxic-MD bot subscription has expired!',
-              '',
-              'This bot will be permanently deleted in 24 hours unless you renew.',
-              '',
-              'Renew now at: hosting.toxicx.tech',
-              '',
-              '- Toxic Hosting'
-            ].join('\n')
-          });
-        } catch {}
-      }
 
     if (!hasSentStartMessage) {
       const isNewUser = !sudoUsers.includes(userId);
@@ -86,8 +77,6 @@ async function connectionHandler(socket, connectionUpdate, reconnect) {
             ``,
             `│❒ *New User Alert*: You've been added to the sudo list.`,
             ``,
-            `🌐 *Hosted by Toxic-Hosting*`,
-            `🔗 hosting.toxicx.tech`,
             `◈━━━━━━━━━━━━━━━━◈`
           ].join("\n")
         : [
@@ -101,8 +90,6 @@ async function connectionHandler(socket, connectionUpdate, reconnect) {
             `📦 *Commands*: ${totalCommands}`,
             `🕒 *Time*: ${getCurrentTime()}`,
             ``,
-            `🌐 *Hosted by Toxic-Hosting*`,
-            `🔗 hosting.toxicx.tech`,
             `◈━━━━━━━━━━━━━━━━◈`
           ].join("\n");
 
@@ -111,7 +98,6 @@ async function connectionHandler(socket, connectionUpdate, reconnect) {
       try {
         await socket.sendMessage(botJid, {
           text: firstMessage,
-          footer: `Powered by Toxic-Hosting`,
           viewOnce: true
         });
 
@@ -127,44 +113,31 @@ async function connectionHandler(socket, connectionUpdate, reconnect) {
             `│ ${effectivePrefix}ping — Check bot speed`,
             `│ ${effectivePrefix}uptime — Bot uptime`,
             `╰───────────────`,
-            `> 🌐 Hosted by Toxic-Hosting`,
-            `> 🔗 hosting.toxicx.tech`
+            `> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`,
+            ``
           ].join('\n');
           await socket.sendMessage(botJid, { text: iosQuickText });
         } else {
-          const buttonsMsg = generateWAMessageFromContent(
-            botJid,
-            {
-              interactiveMessage: {
-                body: {
-                  text: `*Bot is ready!*\n*Pick an option below to get started.*`
-                },
-                footer: { text: `Hosted by Toxic-Hosting | hosting.toxicx.tech` },
-                nativeFlowMessage: {
-                  messageVersion: 1,
-                  buttons: [
-                    {
-                      name: 'single_select',
-                      buttonParamsJson: JSON.stringify({
-                        title: 'Get Started',
-                        sections: [{
-                          title: 'Quick Actions',
-                          rows: [
-                            { title: 'Menu', description: 'View all commands', id: `${effectivePrefix}menu` },
-                            { title: 'Settings', description: 'Bot configuration', id: `${effectivePrefix}settings` },
-                            { title: 'Ping', description: 'Check bot speed', id: `${effectivePrefix}ping` },
-                            { title: 'Uptime', description: 'How long bot has been running', id: `${effectivePrefix}uptime` }
-                          ]
-                        }]
-                      })
-                    }
-                  ]
-                }
-              }
-            },
-            {}
-          );
-          await socket.relayMessage(botJid, buttonsMsg.message, { messageId: buttonsMsg.key.id });
+          try {
+            const btnV2 = new ButtonV2(socket);
+            btnV2.setBody(`*Bot is ready!*\n*Pick an option below to get started.*`)
+                .setFooter('> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧')
+                .addButton('𝐌𝐞𝐧𝐮', `${effectivePrefix}menu`)
+                .addButton('𝐒𝐞𝐭𝐭𝐢𝐧𝐠𝐬', `${effectivePrefix}settings`)
+                .addButton('𝐏𝐢𝐧𝐠', `${effectivePrefix}ping`);
+            await btnV2.send(botJid, { userJid: socket.user?.id || '' });
+          } catch {
+            const quickText = [
+              `╭─❏ 「 Quick Start 」`,
+              `│ ${effectivePrefix}menu — View all commands`,
+              `│ ${effectivePrefix}settings — Bot configuration`,
+              `│ ${effectivePrefix}ping — Check bot speed`,
+              `│ ${effectivePrefix}uptime — Bot uptime`,
+              `╰───────────────`,
+              `> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`
+            ].join('\n');
+            await socket.sendMessage(botJid, { text: quickText });
+          }
         }
       } catch (error) {}
 

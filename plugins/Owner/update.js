@@ -9,7 +9,7 @@ import path from 'path';
 
 const execAsync = promisify(exec);
 const fmt = (msg) => `╭─❏ 「 UPDATE」\n│ ${msg}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`;
-const REPO = (process.env.GITHUB_REPO || 'xhclintohn/Toxic-MD').replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '');
+const REPO = (process.env.GITHUB_REPO || 'xhclintohn/Toxic-MD-Paid').replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '');
 const SKIP = new Set(['.git','node_modules','.env','config.env','session.json','creds.json','auth','Session','session']);
 const doRestart = (root) => { setTimeout(() => exec('pm2 restart toxic-v2 || pm2 restart all', { cwd: root }, () => process.exit(0)), 1500); };
 

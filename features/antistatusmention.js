@@ -1,7 +1,8 @@
 import { getGroupSettings, addWarn, resetWarn, getWarnLimit } from '../database/config.js';
 import { resolveTargetJid } from '../lib/lidResolver.js';
 
-const fmt = (msg) => `│  ${msg}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`;
+const fmt = (msg) => `╭─❏ 「 ANTISTATUSMENTION 」
+│  ${msg}\n╰───────────────\n> ©𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐱𝐡_𝐜𝐥𝐢𝐧𝐭𝐨𝐧`;
 
 const _num = (jid) => (jid || '').split('@')[0].split(':')[0].replace(/\D/g, '');
 
@@ -10,7 +11,7 @@ const _pNum = (p) => {
     if (phone) return _num(phone);
     const base = p.id || p.jid || '';
     if (base && !base.endsWith('@lid')) return _num(base);
-    return _num(p.lid || base); // fallback: LID number (not a phone, but best we have)
+    return _num(p.lid || base);
 };
 
 export default async (client, m) => {
@@ -27,7 +28,6 @@ export default async (client, m) => {
         const groupMetadata = await client.groupMetadata(m.chat);
         const sender = resolveTargetJid(m.sender, groupMetadata.participants);
 
-
         if (!sender) {
             return;
         }
@@ -42,7 +42,6 @@ export default async (client, m) => {
         const isBotAdmin = groupMetadata.participants.some(p => {
             return _pNum(p) === botNum && (p.admin === 'admin' || p.admin === 'superadmin');
         });
-
 
         const username = senderNum || sender.split('@')[0];
 

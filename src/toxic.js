@@ -16,7 +16,7 @@ import gcPresence from '../features/gcPresence.js';
 import antitaggc from '../features/antitag.js';
 import antilink from '../features/antilink.js';
 import { getGroupSettings, updateSetting } from '../database/config.js';
-import { getCachedSettings, getCachedSudo, getCachedBanned, getCachedSettingsSync, getCachedSudoSync, getCachedBannedSync } from '../lib/settingsCache.js';
+import { getCachedSettings, getCachedSudo, getCachedBanned, getCachedBannedGroups, getCachedSettingsSync, getCachedSudoSync, getCachedBannedSync, getCachedBannedGroupsSync } from '../lib/settingsCache.js';
 import { botname, mycode } from '../config/settings.js';
 import { cleanupOldMessages } from '../lib/Store.js';
 import * as msgStore from '../lib/MessageStore.js';
@@ -25,6 +25,10 @@ import autoai from '../features/autoai.js';
 import antiviewonce from '../features/antiviewonce.js';
 import toxicaiFeature from '../features/toxicai.js';
 import afkFeature from '../features/afk.js';
+import mentionResponder from '../features/mentionResponder.js';
+import antisticker from '../features/antisticker.js';
+import antispam from '../features/antispam.js';
+import antibot from '../features/antibot.js';
 import ownerMiddleware from '../utils/botUtil/Ownermiddleware.js';
 import { lidMappingCache } from '../handlers/smsg.js';
 import { resolveTargetJid, resolveSenderJid } from '../lib/lidResolver.js';
@@ -229,9 +233,20 @@ export default async (client, m, chatUpdate, store) => {
         m.sender = resolveLidToPhoneNumber(m.sender);
     }
     if (m.chat && m.chat.endsWith('@lid')) {
-        m.chat = resolveLidToPhoneNumber(m.chat);
-    }
+          m.chat = resolveLidToPhoneNumber(m.chat);
+      }
 
+      // ── Message count tracking (for autoreport) ──
+      if (!m.key?.fromMe && m.sender) {
+          const _cPhone = m.sender.split('@')[0].split(':')[0].replace(/\D/g, '');
+          if (_cPhone && /^\d{7,15}$/.test(_cPhone)) {
+              if (!global._toxicMsgCounts) global._toxicMsgCounts = {};
+              if (!global._toxicMsgCountsToday) global._toxicMsgCountsToday = {};
+              global._toxicMsgCounts[_cPhone] = (global._toxicMsgCounts[_cPhone] || 0) + 1;
+              global._toxicMsgCountsToday[_cPhone] = (global._toxicMsgCountsToday[_cPhone] || 0) + 1;
+          }
+      }
+  
     if (shouldStoreMessage(m)) {
         const _sRjid = m.chat || m.key?.remoteJid;
         const _sNjid = _sRjid;
@@ -293,10 +308,13 @@ export default async (client, m, chatUpdate, store) => {
     try {
         const rawSudoUsers = getCachedSudoSync();
         const rawBannedUsers = getCachedBannedSync();
+        const rawBannedGroups = getCachedBannedGroupsSync();
         const fetchedSettings = getCachedSettingsSync();
         getCachedSettings().catch(() => {});
+        getCachedBannedGroups().catch(() => {});
         const sudoUsers = Array.isArray(rawSudoUsers) ? rawSudoUsers : [];
         const bannedUsers = Array.isArray(rawBannedUsers) ? rawBannedUsers : [];
+        const bannedGroups = Array.isArray(rawBannedGroups) ? rawBannedGroups : [];
         let settings = fetchedSettings;
 
         if (!settings) { try { settings = await getCachedSettings(); } catch {} if (!settings) return; }
@@ -518,6 +536,7 @@ export default async (client, m, chatUpdate, store) => {
         if ((trimmedBody.startsWith('>') || trimmedBody.startsWith('$')) && Owner && !cmd) {
             const evalText = trimmedBody.slice(1).trim();
             if (!evalText) return await m.reply('W eval?🟢!');
+            const sock = client, conn = client, bot = client, xh = client, clint = client, wa = client;
             await client.sendMessage(m.chat, { react: { text: '⌛', key: m.reactKey } });
             try {
                 let evaled = await eval(evalText);
@@ -541,6 +560,10 @@ export default async (client, m, chatUpdate, store) => {
             }
         }
 
+        if (m.isGroup && !itsMe && !isDev && !Owner && bannedGroups.includes(m.chat)) {
+            return;
+        }
+
         if (cmd && !itsMe && !isDev && !Owner) {
             if (mode === 'private') return;
             if (mode === 'group' && !m.isGroup) return;
@@ -557,7 +580,7 @@ export default async (client, m, chatUpdate, store) => {
                     toxicspeed, mycode, fetchJson, exec, getRandom, UploadFileUgu, TelegraPh, prefix: usedPrefix, cmd,
                     botname, mode, gcpresence, antitag, antidelete: antideleteSetting, fetchBuffer, sendJson, settings,
                     getGroupAdmins: () => [], pict, Tag, stealth, multiprefix, isDev, isSudo, isEnvOwner, fakeQuoted, fq: fakeQuoted,
-                    isGroup: m.isGroup, command: commandName, sock: client, conn: client
+                    isGroup: m.isGroup, command: commandName, sock: client, conn: client, wa: client, bot: client, xh: client, clint: client
                 };
                 if (typeof cmd.run === 'function') await cmd.run(stCtx);
                 else if (typeof cmd === 'function') await cmd(stCtx);
@@ -600,6 +623,7 @@ export default async (client, m, chatUpdate, store) => {
                 gcPresence(client, m).catch(e => console.log('❌ [GCPRESENCE]:', e.message)),
                 antitaggc(client, m, isBotAdmin, itsMe, isAdmin, Owner, body).catch(e => console.log('❌ [ANTITAGGC]:', e.message)),
                 antistatusmention(client, m).catch(e => console.log('❌ [ANTISTATUSMENTION]:', e.message)),
+                mentionResponder(client, m).catch(e => console.log('❌ [MENTIONRESPONDER]:', e.message)),
             );
         }
         Promise.all(_featurePromises).catch(() => {});
@@ -725,10 +749,11 @@ export default async (client, m, chatUpdate, store) => {
                                 if (originalMessage?.message) { const origMsg = extractInnerMessage(originalMessage.message); originalText = origMsg.conversation || origMsg.extendedTextMessage?.text || origMsg.imageMessage?.caption || origMsg.videoMessage?.caption || ''; }
                                 const newInner = extractInnerMessage(newMessage);
                                 const newText = newInner.conversation || newInner.extendedTextMessage?.text || newInner.imageMessage?.caption || newInner.videoMessage?.caption || '';
-                                if (originalText || newText) {
+                                if (newText) {
                                     let fullMsg = `╭─❏ 「 EDITED MSG 」\n│ Time: ${editTime}\n│ Chat: ${groupName}\n│ Edited by: @${editor}\n╰───────────────`;
                                     if (originalText) fullMsg += `\n\nOriginal:\n${originalText}`;
-                                    if (newText) fullMsg += `\n\nEdited to:\n${newText}`;
+                                    else fullMsg += `\n\n📌 *Original message not in cache.*`;
+                                    fullMsg += `\n\nEdited to:\n${newText}`;
                                     await client.sendMessage(botJid, { text: fullMsg, mentions: [m.key.participant || m.sender] });
                                 }
                             }
@@ -773,7 +798,7 @@ export default async (client, m, chatUpdate, store) => {
                 }
                 const cmdCtx = {
                     client, m, args, text, prefix: usedPrefix, command: commandName, pushname, botNumber,
-                    itsMe, isDev, isSudo, isEnvOwner, Owner, settings, Tag, msgToxic, budy, sock: client, conn: client, wa: client, store,
+                    itsMe, isDev, isSudo, isEnvOwner, Owner, settings, Tag, msgToxic, budy, sock: client, conn: client, wa: client, bot: client, xh: client, clint: client, store,
                     isAdmin, isBotAdmin, mode, pict, botname, totalCommands, isGroup: m.isGroup,
                     participants, groupMetadata, body, fq: fakeQuoted, fakeQuoted, mime, qmsg,
                     packname: settings.packname, generateProfilePicture, toxicspeed, mycode, fetchJson,
@@ -791,12 +816,9 @@ export default async (client, m, chatUpdate, store) => {
             }
         }
 
-        // ── AI features ──────────────────────────────────────────────────────
-        // autoai: DM replies (chatbotpm) + @mentions in groups
         autoai({ client, m, settings, botNumber, body, isDev, isSudo, Owner,
             prefix: usedPrefix, fq: fakeQuoted, pushname }).catch(e => console.log('❌ [AUTOAI]:', e.message));
 
-        // toxicai: developer-only GitHub AI agent
         if (settings?.toxicagent === true || settings?.toxicagent === 'true') {
             toxicaiFeature({ client, m, body, isDev, settings, fq: fakeQuoted, prefix: usedPrefix }).catch(e => console.log('❌ [TOXICAI]:', e.message));
         }

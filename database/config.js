@@ -170,7 +170,8 @@ const PG_SCHEMA = [
         antilink TEXT DEFAULT 'off', antistatusmention TEXT DEFAULT 'off', antitag INTEGER DEFAULT 0,
         welcome INTEGER DEFAULT 0, goodbye INTEGER DEFAULT 0, warn_limit INTEGER DEFAULT 3,
         antiforeign INTEGER DEFAULT 0, custom_welcome TEXT DEFAULT '', custom_goodbye TEXT DEFAULT '',
-        trusted_links TEXT DEFAULT '[]'
+        trusted_links TEXT DEFAULT '[]', antisticker TEXT DEFAULT 'off',
+        antispam TEXT DEFAULT 'off', antibot INTEGER DEFAULT 0
     )`,
     `CREATE TABLE IF NOT EXISTS conversation_history (
         id SERIAL PRIMARY KEY, num TEXT NOT NULL, role TEXT NOT NULL,
@@ -213,6 +214,9 @@ async function tryInitPg() {
             `ALTER TABLE group_settings ADD COLUMN IF NOT EXISTS custom_welcome TEXT DEFAULT ''`,
             `ALTER TABLE group_settings ADD COLUMN IF NOT EXISTS custom_goodbye TEXT DEFAULT ''`,
             `ALTER TABLE group_settings ADD COLUMN IF NOT EXISTS trusted_links TEXT DEFAULT '[]'`,
+            `ALTER TABLE group_settings ADD COLUMN IF NOT EXISTS antisticker TEXT DEFAULT 'off'`,
+            `ALTER TABLE group_settings ADD COLUMN IF NOT EXISTS antispam TEXT DEFAULT 'off'`,
+            `ALTER TABLE group_settings ADD COLUMN IF NOT EXISTS antibot INTEGER DEFAULT 0`,
         ];
         for (const a of alters) { try { await pool.query(a); } catch {} }
         setInterval(() => { pool.query('SELECT 1').catch(() => {}); }, 3 * 60 * 1000);
@@ -221,7 +225,7 @@ async function tryInitPg() {
         console.log('✅ [DB] Using PostgreSQL');
         return true;
     } catch (e) {
-        console.log(`⚠️ [DB] PostgreSQL unavailable (${e.message}) — falling back to JSON`);
+        console.log(`⚠️ [DB] PostgreSQL unavailable (${e.message}) — using fallback`);
         return false;
     }
 }
